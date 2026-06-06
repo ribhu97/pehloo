@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.dual-graph/
+
+# Local caches & tool state
+.pytest_cache/
+.claude/
+.token-savior-cache.json
+
+# Secrets
+.env
+
+# Local artifacts / data
+steering_vector.pt
+personas_test.json
+
+graphify-out
+examples/
+reports/

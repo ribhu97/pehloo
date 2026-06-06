@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pehloo UX Report — {{ report.generated_at.strftime('%Y-%m-%d %H:%M') }}</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #5a7fdb;
+    --sev-high: #dc2626;
+    --sev-med: #f59e0b;
+    --sev-low: #6b7280;
+    --status-completed: #16a34a;
+    --status-stuck: #dc2626;
+    --status-failed: #dc2626;
+    --status-skipped: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+  }
+  header.page { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+  header.page h1 { margin: 0 0 .25rem; font-size: 1.75rem; }
+  header.page .meta { color: var(--muted); font-size: .9rem; }
+
+  h2 { font-size: 1.3rem; margin-top: 2.5rem; padding-bottom: .35rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.05rem; margin: 0; }
+
+  .summary-box {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+
+  /* Fix This First */
+  .issue-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: .75rem 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .issue-card.severity-high { border-left-color: var(--sev-high); }
+  .issue-card.severity-med  { border-left-color: var(--sev-med); }
+  .issue-card.severity-low  { border-left-color: var(--sev-low); }
+  .issue-card header {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    margin-bottom: .5rem;
+  }
+  .issue-card .severity-tag {
+    font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    padding: .15rem .5rem; border-radius: 999px;
+    background: #f3f4f6; color: var(--muted); white-space: nowrap;
+  }
+  .issue-card.severity-high .severity-tag { background: #fee2e2; color: var(--sev-high); }
+  .issue-card.severity-med  .severity-tag { background: #fef3c7; color: #b45309; }
+  .issue-card .fix { background: #f0fdf4; border-left: 2px solid #16a34a; padding: .5rem .75rem; margin: .5rem 0; border-radius: 3px; }
+  .issue-card .affected { color: var(--muted); font-size: .85rem; margin: .25rem 0 0; }
+  .issue-card .affected a { color: var(--accent); text-decoration: none; }
+  .issue-card .affected a:hover { text-decoration: underline; }
+
+  /* Step cards */
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: .5rem 0;
+    overflow: hidden;
+  }
+  .step-card > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: .75rem 1rem;
+    display: grid;
+    grid-template-columns: 2rem 1fr auto auto auto;
+    gap: .75rem;
+    align-items: center;
+  }
+  .step-card > summary::-webkit-details-marker { display: none; }
+  .step-card > summary::before {
+    content: "▸"; color: var(--muted); transition: transform .15s;
+    grid-column: 1; justify-self: center;
+  }
+  .step-card[open] > summary::before { content: "▾"; }
+  .step-card .step-num { display: none; }
+  .step-card .step-instruction { font-weight: 500; }
+  .badge {
+    font-size: .75rem; padding: .15rem .55rem; border-radius: 999px;
+    background: #f3f4f6; color: var(--muted); white-space: nowrap;
+  }
+  .badge.status-completed { background: #dcfce7; color: var(--status-completed); }
+  .badge.status-stuck, .badge.status-failed { background: #fee2e2; color: var(--status-stuck); }
+  .badge.status-skipped { background: #fef3c7; color: #b45309; }
+  .badge.friction-high { background: #fee2e2; color: var(--sev-high); font-weight: 600; }
+  .badge.delight-high { background: #dcfce7; color: var(--status-completed); font-weight: 600; }
+
+  .step-body {
+    padding: 0 1rem 1rem 3rem;
+    border-top: 1px solid var(--border);
+    padding-top: .75rem;
+  }
+  .step-body p { margin: .35rem 0; font-size: .9rem; }
+  .step-body .label { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: .7rem; letter-spacing: .05em; }
+  .narration {
+    background: #f9fafb;
+    border-left: 2px solid var(--accent);
+    padding: .6rem .85rem;
+    margin: .5rem 0;
+    font-style: italic;
+    color: #374151;
+    border-radius: 3px;
+  }
+  .url-link {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .8rem;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  details.trace { margin-top: .75rem; }
+  details.trace summary { cursor: pointer; color: var(--muted); font-size: .8rem; }
+  details.trace pre {
+    background: #1f2937; color: #e5e7eb; padding: .75rem; border-radius: 4px;
+    overflow-x: auto; font-size: .75rem; line-height: 1.4;
+  }
+
+  .persona-section { margin-top: 2.5rem; }
+  .persona-desc { color: var(--muted); margin: .25rem 0; }
+  .persona-findings { background: var(--card); padding: .75rem 1rem; border-radius: 4px; border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header class="page">
+  <h1>Pehloo UX Test Report</h1>
+  <div class="meta">
+    Generated {{ report.generated_at.strftime('%Y-%m-%d %H:%M UTC') }}
+    · {{ report.test_runs|length }} persona{{ '' if report.test_runs|length == 1 else 's' }}
+    · {{ report.observations|length }} step{{ '' if report.observations|length == 1 else 's' }} observed
+  </div>
+</header>
+
+<h2>🔧 Fix This First</h2>
+{% if report.prioritized_issues %}
+  {% for issue in report.prioritized_issues %}
+    {% set sev_class = 'high' if issue.severity >= 8 else 'med' if issue.severity >= 4 else 'low' %}
+    <article class="issue-card severity-{{ sev_class }}">
+      <header>
+        <h3>{{ issue.title }}</h3>
+        <span class="severity-tag">severity {{ issue.severity }}</span>
+      </header>
+      <p>{{ issue.description }}</p>
+      {% if issue.suggested_fix %}<p class="fix"><strong>Fix:</strong> {{ issue.suggested_fix }}</p>{% endif %}
+      <p class="affected">
+        Affects:
+        {% for pid in issue.affected_persona_ids %}
+          {% set pname = persona_names.get(pid, pid) %}
+          <a href="#persona-{{ pid }}">{{ pname }}</a>{{ ", " if not loop.last }}
+        {% endfor %}
+        {% if issue.affected_step_indices %}
+          · Steps:
+          {% for idx in issue.affected_step_indices %}{{ idx + 1 }}{{ ", " if not loop.last }}{% endfor %}
+        {% endif %}
+      </p>
+    </article>
+  {% endfor %}
+{% else %}
+  <p style="color: var(--muted);">No critical issues flagged — clean run. 🎉</p>
+{% endif %}
+
+<h2>Cross-Persona Summary</h2>
+<div class="summary-box">{{ report.summary or "No summary generated." }}</div>
+
+{% for run in report.test_runs %}
+<section class="persona-section" id="persona-{{ run.persona.id }}">
+  <h2>{{ run.persona.name }}</h2>
+  <p class="persona-desc">{{ run.persona.description }}</p>
+  {% if report.per_persona_findings.get(run.persona.id) %}
+    <p class="persona-findings">{{ report.per_persona_findings[run.persona.id] }}</p>
+  {% endif %}
+
+  {% for obs in report.observations if obs.test_run_id == run.id %}
+    <details class="step-card" id="step-{{ run.persona.id }}-{{ obs.step_index }}">
+      <summary>
+        <span class="step-instruction">{{ obs.step_index + 1 }}. {{ obs.step_instruction }}</span>
+        <span class="badge status-{{ obs.status }}">{{ obs.status }}</span>
+        <span class="badge {{ 'friction-high' if obs.friction_score >= 4 else '' }}">friction {{ obs.friction_score }}/5</span>
+        <span class="badge {{ 'delight-high' if obs.delight_score >= 4 else '' }}">delight {{ obs.delight_score }}/5</span>
+      </summary>
+      <div class="step-body">
+        {% if obs.url_at_step %}
+        <p><span class="label">URL</span><br>
+          <a class="url-link" href="{{ obs.url_at_step }}" target="_blank" rel="noopener">{{ obs.url_at_step }}</a>
+        </p>
+        {% endif %}
+        <p><span class="label">Narration</span></p>
+        <blockquote class="narration">{{ obs.narration or "(no narration)" }}</blockquote>
+        {% if obs.raw_agent_output %}
+        <details class="trace">
+          <summary>Raw agent trace</summary>
+          <pre>{{ obs.raw_agent_output }}</pre>
+        </details>
+        {% endif %}
+      </div>
+    </details>
+  {% endfor %}
+</section>
+{% endfor %}
+
+</body>
+</html>
